@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import sys
 from time import sleep
 
 import flet as ft
@@ -1863,8 +1864,11 @@ def main(page: ft.Page):
         Se não:
             Chama a tela de selecionar/criar db
         """
-        if Path("src\\config.json").exists():
-            with open("src\\config.json") as f:
+        caminho_executavel = Path(sys.executable).parent
+
+        caminho_json = caminho_executavel / "config.json"
+        if caminho_json.exists():
+            with open(caminho_json) as f:
                 dicionario = json.load(f)
             if (
                 "caminho_db_prontuarios" in dicionario

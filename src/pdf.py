@@ -1,4 +1,6 @@
+from pathlib import Path
 from subprocess import Popen
+import sys
 from tempfile import NamedTemporaryFile
 
 from reportlab.lib.pagesizes import A4
@@ -6,9 +8,11 @@ from reportlab.pdfgen import canvas
 
 
 class GerarPDF:
+    caminho_executavel = Path(sys.executable).parent
+
+    imagem = str(caminho_executavel / "bastao_de_asclepio.bmp")
     altura_máxima_A4 = 842
     largura_máxima_A4 = 595
-    imagem = r'src\bastao_de_asclepio.bmp'
     altura_imagem = 278
     largura_imagem = 80
     base_contato = 60

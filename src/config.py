@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import sys
 
 
 class ArquivoConfigNaoEncontrado(Exception):
@@ -16,14 +17,17 @@ class JsonFile:
         Lê arquivo json
         Atribui valor à chave
         """
-        if Path("src\\config.json").exists():
-            with open("src\\config.json") as f:
+        caminho_executavel = Path(sys.executable).parent
+
+        caminho_json = caminho_executavel / "config.json"
+        if caminho_json.exists():
+            with open(caminho_json) as f:
                 dicionario = json.load(f)
             dicionario[chave] = valor
         else:
             dicionario = {chave: valor}
         js = json.dumps(dicionario)
-        with open("src\\config.json", "w") as f:
+        with open(caminho_json, "w") as f:
             f.write(js)
 
     def ler(self, variavel):
@@ -31,8 +35,11 @@ class JsonFile:
         Recebe variável
         Retorna o valor de dicionario[variavel]
         """
-        if Path('src\\config.json').exists():
-            with open('src\\config.json') as f:
+        caminho_executavel = Path(sys.executable).parent
+
+        caminho_json = caminho_executavel / "config.json"
+        if caminho_json.exists():
+            with open(caminho_json) as f:
                 dicionario = json.load(f)
             if variavel in dicionario:
                 return dicionario[variavel]
@@ -46,9 +53,12 @@ class JsonFile:
         Recebe a chave do dicionario
         Exclui do dicionario o conteúdo daquela chave
         """
-        with open('src\\config.json') as f:
+        caminho_executavel = Path(sys.executable).parent
+
+        caminho_json = caminho_executavel / "config.json"
+        with open(caminho_json) as f:
             dicionario = json.load(f)
         del dicionario[chave]
         js = json.dumps(dicionario)
-        with open("src\\config.json", "w") as f:
+        with open(caminho_json, "w") as f:
             f.write(js)
