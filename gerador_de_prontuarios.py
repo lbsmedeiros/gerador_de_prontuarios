@@ -18,7 +18,7 @@ from src.pdf import GerarPDF
 
 
 def main(page: ft.Page):
-    page.title = "Prontuários"
+    page.title = "Gerador de Prontuários"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.scroll = ft.ScrollMode.AUTO
@@ -1864,8 +1864,8 @@ def main(page: ft.Page):
         Se não:
             Chama a tela de selecionar/criar db
         """
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
         caminho_executavel = Path(sys.executable).parent
-
         caminho_json = caminho_executavel / "config.json"
         if caminho_json.exists():
             with open(caminho_json) as f:

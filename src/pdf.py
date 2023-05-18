@@ -8,14 +8,13 @@ from reportlab.pdfgen import canvas
 
 
 class GerarPDF:
+    # imagem = r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\bastao_de_asclepio.bmp"
     caminho_executavel = Path(sys.executable).parent
-
     imagem = str(caminho_executavel / "bastao_de_asclepio.bmp")
     altura_máxima_A4 = 842
     largura_máxima_A4 = 595
     altura_imagem = 278
     largura_imagem = 80
-    base_contato = 60
 
     def gerar_receita(self, dicionario):
         """
@@ -42,10 +41,13 @@ class GerarPDF:
                 )
                 posicao_texto -= 20
 
-            cnv.drawString(20, self.base_contato, 'Contato:')
+            temp_list = dicionario["contatos"]
+            temp_list.reverse()
+            base = 15
             for contato in dicionario["contatos"]:
-                self.base_contato -= 15
-                cnv.drawString(40, self.base_contato, contato)
+                cnv.drawString(40, base, contato)
+                base += 15
+            cnv.drawString(20, base, 'Contato:')
 
             cnv.save()
         Popen(["start", "/MAX", tf.name], shell=True)

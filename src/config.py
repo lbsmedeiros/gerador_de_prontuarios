@@ -17,8 +17,8 @@ class JsonFile:
         Lê arquivo json
         Atribui valor à chave
         """
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
         caminho_executavel = Path(sys.executable).parent
-
         caminho_json = caminho_executavel / "config.json"
         if caminho_json.exists():
             with open(caminho_json) as f:
@@ -35,8 +35,8 @@ class JsonFile:
         Recebe variável
         Retorna o valor de dicionario[variavel]
         """
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
         caminho_executavel = Path(sys.executable).parent
-
         caminho_json = caminho_executavel / "config.json"
         if caminho_json.exists():
             with open(caminho_json) as f:
@@ -53,8 +53,8 @@ class JsonFile:
         Recebe a chave do dicionario
         Exclui do dicionario o conteúdo daquela chave
         """
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
         caminho_executavel = Path(sys.executable).parent
-
         caminho_json = caminho_executavel / "config.json"
         with open(caminho_json) as f:
             dicionario = json.load(f)
