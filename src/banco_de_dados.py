@@ -1,255 +1,135 @@
-import sqlite3
+from datetime import datetime
+from sqlalchemy import String, DateTime, insert, select, update, delete
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
-from src.config import JsonFile
+
+Base = declarative_base()
 
 
-class DbSetores:
+class Prontuarios(Base):
+    __tablename__ = 'prontuarios'
 
-    def inserir(self, setor):
-        """
-        Cria a tabela se ela ainda não existir
-        Insere na tabela os valores recebidos no dicionario
-        """
-        jf = JsonFile()
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cpf: Mapped[str] = mapped_column(String(14))
+    nome: Mapped[str] = mapped_column(String(100))
+    telefone: Mapped[str] = mapped_column(String(15))
+    nascimento: Mapped[str] = mapped_column(String(10))
+    sexo: Mapped[str] = mapped_column(String(1))
+    peso: Mapped[str] = mapped_column(String(5))
+    sintomas: Mapped[str] = mapped_column(String(500))
+    emergencia: Mapped[str] = mapped_column(String(8))
+    observacoes: Mapped[str] = mapped_column(String(500))
+    exames: Mapped[str] = mapped_column(String(500))
+    diagnostico: Mapped[str] = mapped_column(String(500))
+    receituario: Mapped[str] = mapped_column(String(500))
+    prontuario_ativo: Mapped[str] = mapped_column(String(5))
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now, onupdate=datetime.now)
 
-        con = sqlite3.connect(jf.ler('caminho_db_setores'))
-        cur = con.cursor()
 
-        cur.execute("CREATE TABLE IF NOT EXISTS setores (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, setor TEXT UNIQUE)")
-        con.commit()
+class Setores(Base):
+    __tablename__ = 'setores'
 
-        try:
-            cur.execute("INSERT INTO setores (setor) VALUES (?)", (setor, ))
-            con.commit()
-        except sqlite3.IntegrityError:
-            pass
-
-        con.close()
-
-    def coletar_um(self, setor):
-        """
-        Receber setor
-        Coleta informações de uma entrada do db
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_setores'))
-        cur = con.cursor()
-
-        try:
-            res = cur.execute('SELECT * FROM setores WHERE setor=?', (setor,)).fetchall()
-        except sqlite3.OperationalError:
-            res = None
-
-        con.close()
-
-        if res:
-            return res[0]
-        else:
-            return None
-
-    def coletar_varios(self, setor=None):
-        """
-        Pode receber setor
-        Coleta informações de todas as entradas do db
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_setores'))
-        cur = con.cursor()
-
-        try:
-            if setor:
-                res = cur.execute('SELECT * FROM setores WHERE setor=?', (setor,)).fetchall()
-            else:
-                res = cur.execute(f"SELECT * FROM setores").fetchall()
-        except sqlite3.OperationalError:
-            res = None
-
-        con.close()
-
-        if res:
-            return res
-        else:
-            return None
-
-    def atualizar(self, indice, novo_valor):
-        """
-        Recebe indice e novo valor
-        Atualiza informações do db
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_setores'))
-        cur = con.cursor()
-
-        cur.execute(f"UPDATE setores SET setor=? WHERE id=?", (novo_valor, indice))
-
-        con.commit()
-        con.close()
-
-    def excluir(self, setor):
-        """
-        Recebe setor
-        Exclui setor do dicionario
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_setores'))
-        cur = con.cursor()
-
-        cur.execute("DELETE FROM setores WHERE setor=?", (setor,))
-
-        con.commit()
-        con.close()
+    id: Mapped[int] = mapped_column(primary_key=True)
+    setor: Mapped[str] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(), default=datetime.now)
 
 
 class DbProntuarios:
+    def __init__(self, engine):
+        self.engine = engine
+        Base.metadata.create_all(self.engine)
 
-    def inserir(self, dicionario):
-        """
-        Cria a tabela se ela ainda não existir
-        Insere na tabela os valores recebidos no dicionario
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_prontuarios'))
-        cur = con.cursor()
-
-        cur.execute("CREATE TABLE IF NOT EXISTS prontuarios (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, cpf TEXT, nome TEXT, telefone TEXT, nascimento TEXT, sexo TEXT, peso TEXT, sintomas TEXT, emergencia TEXT, observacoes TEXT, exames TEXT, diagnostico TEXT, receituario TEXT, prontuario_ativo TEXT, created_at TEXT, updated_at TEXT)")
-        con.commit()
-
-        cur.execute("INSERT INTO prontuarios (cpf, nome, telefone, nascimento, sexo, peso, sintomas, emergencia, observacoes, exames, diagnostico, receituario, prontuario_ativo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-                dicionario['cpf'],
-                dicionario['nome'],
-                dicionario['telefone'],
-                dicionario['nascimento'],
-                dicionario['sexo'],
-                dicionario['peso'],
-                dicionario['sintomas'],
-                dicionario['emergencia'],
-                dicionario['observacoes'],
-                dicionario['exames'],
-                dicionario['diagnostico'],
-                dicionario['receituario'],
-                dicionario['prontuario_ativo'],
-                dicionario['created_at'],
-                dicionario['updated_at']
-            ]
+    def create(self, dicionario):
+        stmt = insert(Prontuarios).values(
+            cpf = dicionario['cpf'],
+            nome = dicionario['nome'],
+            telefone = dicionario['telefone'],
+            nascimento = dicionario['nascimento'],
+            sexo = dicionario['sexo'],
+            peso = dicionario['peso'],
+            sintomas = dicionario['sintomas'],
+            emergencia = dicionario['emergencia'],
+            observacoes = dicionario['observacoes'],
+            exames = dicionario['exames'],
+            diagnostico = dicionario['diagnostico'],
+            receituario = dicionario['receituario'],
+            prontuario_ativo = dicionario['prontuario_ativo']
         )
-        con.commit()
 
-        con.close()
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()
 
-    def gerar_query_coletar(self, dicionario):
-        """
-        Gera a query que será usada para coletar informações do db com base no dicionario recebido
-        """
-        query = "SELECT * FROM prontuarios WHERE "
-        valores = []
+    def read(self, dicionario=None):
+        stmt = select(Prontuarios)
 
-        if 'id' in dicionario:
-            query += 'id=? AND '
-            valores.append(dicionario['id'])
+        if dicionario:
+            for chave, value in dicionario.items():
 
-        if 'nome' in dicionario:
-            query += f'nome LIKE "%{dicionario["nome"]}%" AND '
+                match chave:
+                    case 'id':
+                        stmt = stmt.where(Prontuarios.id == value)
+                    case 'nome':
+                        stmt = stmt.where(Prontuarios.nome.contains(value))
+                    case 'cpf':
+                        stmt = stmt.where(Prontuarios.cpf == value)
+                    case 'vermelho' | 'laranja' | 'amarelo' | 'verde':
+                        stmt = stmt.where(Prontuarios.emergencia != value)
+                    case _:
+                        continue
 
-        if 'cpf' in dicionario:
-            query += 'cpf=? AND '
-            valores.append(dicionario['cpf'])
+        with self.engine.connect() as conn:
+            return conn.execute(stmt)
 
-        # Somente as cores que serão REMOVIDAS da query
-        if 'vermelho' in dicionario:
-            query += 'emergencia!=? AND '
-            valores.append(dicionario['vermelho'])
+    def update(self, indice:int, dicionario):
+        stmt = update(Prontuarios).values(dicionario).where(Prontuarios.id == indice)
 
-        if 'laranja' in dicionario:
-            query += 'emergencia!=? AND '
-            valores.append(dicionario['laranja'])
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()
 
-        if 'amarelo' in dicionario:
-            query += 'emergencia!=? AND '
-            valores.append(dicionario['amarelo'])
+    def delete(self, index):
+        stmt = delete(Prontuarios).where(Prontuarios.id == index)
 
-        if 'verde' in dicionario:
-            query += 'emergencia!=? AND '
-            valores.append(dicionario['verde'])
-        
-        query = query[:-5]
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()
 
-        return query, valores
 
-    def coletar(self, condicao=None):
-        """
-        Pode receber condição de pesquisa na forma de dicionario
-        Coleta informações do db
-        """
-        jf = JsonFile()
+class DbSetores:
+    def __init__(self, engine):
+        self.engine = engine
+        Base.metadata.create_all(self.engine)
 
-        con = sqlite3.connect(jf.ler('caminho_db_prontuarios'))
-        cur = con.cursor()
+    def create(self, valor):
+        stmt = insert(Setores).values(
+            setor = valor
+        )
 
-        try:
-            if condicao:
-                query, valores = self.gerar_query_coletar(condicao)
-                res = cur.execute(query, valores).fetchall()
-            else:
-                res = cur.execute("SELECT * FROM prontuarios WHERE prontuario_ativo=?", ('True', )).fetchall()
-        except sqlite3.OperationalError:
-            res = []
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()
 
-        con.close()
-        return res
+    def read(self, valor=None):
+        stmt = select(Setores)
 
-    def gerar_query_atualizar(self, dicionario):
-        """
-        Recebe dicionario contendo novas informações para o db
-        Gera a query para atualizar informações no db
-        """
-        campos = ['cpf', 'nome', 'telefone', 'nascimento', 'sexo', 'peso', 'sintomas', 'emergencia', 'observacoes', 'exames', 'diagnostico', 'receituario', 'prontuario_ativo', 'created_at', 'updated_at']
-        query = 'UPDATE prontuarios SET '
-        valores = []
+        if valor:
+            stmt = stmt.where(Setores.setor==valor)
 
-        for campo in campos:
-            if campo in dicionario:
-                query += f'{campo}=?, '
-                valores.append(dicionario[campo])
+        with self.engine.connect() as conn:
+            return conn.execute(stmt)
 
-        query = query[:-2]
+    def update(self, indice:int, novo_valor):
+        stmt = update(Setores).values({'setor': novo_valor}).where(Setores.id == indice)
 
-        query += ' WHERE id = ?'
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()
 
-        return query, valores
+    def delete(self, valor):
+        stmt = delete(Setores).where(Setores.setor == valor)
 
-    def atualizar(self, indice, dicionario):
-        """
-        Recebe indice e dicionario
-        Atualiza informações do prontuário do db
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_prontuarios'))
-        cur = con.cursor()
-
-        query, valores = self.gerar_query_atualizar(dicionario)
-        valores.append(indice)
-        cur.execute(query, valores)
-
-        con.commit()
-        con.close()
-
-    def excluir(self, index:str):
-        """
-        Exclui um prontuário do db
-        """
-        jf = JsonFile()
-
-        con = sqlite3.connect(jf.ler('caminho_db_prontuarios'))
-        cur = con.cursor()
-
-        cur.execute("DELETE FROM prontuarios WHERE id=?", index)
-
-        con.commit()
-        con.close()
+        with self.engine.connect() as conn:
+            conn.execute(stmt)
+            conn.commit()

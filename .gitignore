@@ -177,3 +177,4 @@ pyrightconfig.json
 *.ico
 teste*
 *.json
+test*.py
