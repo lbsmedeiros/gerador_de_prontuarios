@@ -74,6 +74,8 @@ class DbProntuarios:
                         stmt = stmt.where(Prontuarios.nome.contains(value))
                     case 'cpf':
                         stmt = stmt.where(Prontuarios.cpf == value)
+                    case 'prontuario_ativo':
+                        stmt = stmt.where(Prontuarios.prontuario_ativo == value)
                     case 'vermelho' | 'laranja' | 'amarelo' | 'verde':
                         stmt = stmt.where(Prontuarios.emergencia != value)
                     case _:

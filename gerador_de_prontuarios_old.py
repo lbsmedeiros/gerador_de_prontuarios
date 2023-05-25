@@ -1,13 +1,14 @@
-# flet run gerador_de_prontuarios.py -d
+# flet run main.py -d
+from datetime import datetime
 import json
 import os
 from pathlib import Path
+import sqlite3
 import sys
 from time import sleep
 
 import flet as ft
 import pyttsx3
-from sqlalchemy import create_engine
 
 from src.banco_de_dados import DbProntuarios, DbSetores
 from src.chamada import Chamada
@@ -201,11 +202,23 @@ def main(page: ft.Page):
 
         if Path(caminho_para_o_db).is_dir():
             db_prontuarios = Path(caminho_para_o_db) / "prontuarios.db"
+            if not db_prontuarios.exists():
+                con = sqlite3.connect(str(db_prontuarios.resolve()))
+                con.commit()
+                con.close()
             db_setores = Path(caminho_para_o_db) / "setores.db"
+            if not db_setores.exists():
+                con = sqlite3.connect(str(db_setores.resolve()))
+                con.commit()
+                con.close()
             lista_de_chamada = Path(caminho_para_o_db) / "chamada.txt"
         else:
             db_prontuarios = Path(caminho_para_o_db)
             db_setores = Path(caminho_para_o_db).parent / "setores.db"
+            if not db_setores.exists():
+                con = sqlite3.connect(str(db_setores.resolve()))
+                con.commit()
+                con.close()
             lista_de_chamada = Path(caminho_para_o_db).parent / "chamada.txt"
 
         jfile = JsonFile()
@@ -510,11 +523,8 @@ def main(page: ft.Page):
         Recebe dicionario
         Instancia a classe DbProntuarios e insere o dicionario no db
         """
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_prontuarios')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        repository = DbProntuarios(engine)
-        repository.create(dicionario)
+        repository = DbProntuarios()
+        repository.inserir(dicionario)
 
     def salvar_novo_prontuario(e):
         """
@@ -539,6 +549,8 @@ def main(page: ft.Page):
                     "diagnostico": "",
                     "receituario": "",
                     "prontuario_ativo": "True",
+                    "created_at": datetime.now().strftime("%d/%m/%Y - %H:%M:%S"),
+                    "updated_at": datetime.now().strftime("%d/%m/%Y - %H:%M:%S"),
                 }
             )
 
@@ -571,11 +583,8 @@ def main(page: ft.Page):
         Recebe dicionario
         Instancia a classe DbProntuarios e atualiza o prontuario no db
         """
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_prontuarios')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        repository = DbProntuarios(engine)
-        repository.update(index, dicionario)
+        repository = DbProntuarios()
+        repository.atualizar(index, dicionario)
 
     def editar_prontuario(e):
         """
@@ -587,7 +596,7 @@ def main(page: ft.Page):
         if not validacoes_individuais():
             # Inserir informações no db
             atualizar_no_db_prontuarios(
-                int(e.control.data),
+                e.control.data,
                 {
                     "cpf": imput_cpf.value,
                     "nome": imput_nome.value,
@@ -597,6 +606,7 @@ def main(page: ft.Page):
                     "peso": imput_peso.value,
                     "sintomas": imput_sintomas.value,
                     "emergencia": imput_emergencia.value,
+                    "updated_at": datetime.now().strftime("%d/%m/%Y - %H:%M:%S"),
                 },
             )
 
@@ -612,7 +622,7 @@ def main(page: ft.Page):
         Atualiza os itens observacoes, exames, diagnostico e receituario no db SE estiverem preenchidos
         Se houver algum valor em receituario, atualiza tbm o valor de prontuario_ativo para False
         """
-        index = int(e.control.data)
+        index = e.control.data
 
         temp_dict1 = {
             "observacoes": imput_observacoes.value,
@@ -627,6 +637,8 @@ def main(page: ft.Page):
                 if chave == "receituario":
                     temp_dict2["prontuario_ativo"] = "False"
 
+        temp_dict2["updated_at"] = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
+
         atualizar_no_db_prontuarios(index, temp_dict2)
 
         page.snack_bar.content = ft.Text(
@@ -637,7 +649,7 @@ def main(page: ft.Page):
 
         tela_visualizar_prontuario(e)
 
-    def pesquisar_prontuario(e=None):
+    def pesquisar_prontuario(e):
         """
         Coleta as informações nos campos de pesquisa
         Coleta posição do switch_finalizados
@@ -659,8 +671,7 @@ def main(page: ft.Page):
         if imput_cpf_pesquisa.value and not imput_cpf_pesquisa.value == "":
             temp_dict["cpf"] = imput_cpf_pesquisa.value
 
-        if not switch_finalizados.value:
-            temp_dict["prontuario_ativo"] = 'True'
+        temp_dict["prontuario_ativo"] = switch_finalizados.value
 
         if checkbox_vermelho.value == False:
             temp_dict["vermelho"] = "red"
@@ -674,14 +685,14 @@ def main(page: ft.Page):
         if checkbox_verde.value == False:
             temp_dict["verde"] = "green"
 
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_prontuarios')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbProntuarios(engine)
+        db = DbProntuarios()
         if temp_dict:
-            res = [i for i in db.read(temp_dict)]
+            res = db.coletar(temp_dict)
         else:
-            res = [i for i in db.read()]
+            res = db.coletar()
+
+        if not switch_finalizados.value:
+            res = [item for item in res if item[-3] == "True"]
 
         temp_list = []
         for i in range(4):
@@ -736,7 +747,14 @@ def main(page: ft.Page):
         )
         page.update()
 
-    def zerar_consultas_e_pesquisar(e=None):
+    def mostrar_todos_os_prontuarios_nao_finalizado(e=None):
+        """
+        Reseta os valores de pesquisa, os checkboxes e o switch
+        coleta todas as informações do db
+        "Monta" cada resultado numa instância de ListTile
+        Insere cada ListTile numa lista temporária organizando pela cor
+        Insere a lista no container_de_prontuarios
+        """
         imput_id_pesquisa.value = ""
         imput_nome_pesquisa.value = ""
         imput_cpf_pesquisa.value = ""
@@ -745,7 +763,43 @@ def main(page: ft.Page):
         checkbox_amarelo.value = True
         checkbox_verde.value = True
         switch_finalizados.value = False
-        pesquisar_prontuario()
+
+        db = DbProntuarios()
+        res = db.coletar()
+        temp_list = []
+
+        for i in range(4):
+            match i:
+                case 0:
+                    variavel = "red"
+                    cor = "vermelho"
+                case 1:
+                    variavel = "orange"
+                    cor = "laranja"
+                case 2:
+                    variavel = "yellow"
+                    cor = "amarelo"
+                case 3:
+                    variavel = "green"
+                    cor = "verde"
+            for resultado in res:
+                if resultado[8] == variavel:
+                    temp_list.append(
+                        ft.ListTile(
+                            title=ft.Text(
+                                f"Prontuario {resultado[0]}, CPF {resultado[1]}, Nome {resultado[2]}"
+                            ),
+                            subtitle=ft.Text(f"Atendimento {cor}", color=variavel),
+                            dense=True,
+                            on_click=tela_visualizar_prontuario,
+                        )
+                    )
+
+        container_de_prontuarios.content = ft.Column(
+            temp_list,
+            spacing=0,
+        )
+        page.update()
 
     def preencher_identificacao():
         """
@@ -835,12 +889,8 @@ def main(page: ft.Page):
         Atribui lista ao dropdown_menu_selecionar.option
         """
         temp_list = []
-
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_setores')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbSetores(engine)
-        lista_de_tuplas = [i for i in db.read()]
+        db = DbSetores()
+        lista_de_tuplas = db.coletar_varios()
         if lista_de_tuplas:
             for tupla in lista_de_tuplas:
                 temp_list.append(ft.dropdown.Option(tupla[1]))
@@ -879,10 +929,8 @@ def main(page: ft.Page):
         jf = JsonFile()
         try:
             setor_atual = jf.ler("setor_atual")
-            caminho_db = jf.ler('caminho_db_setores')
-            engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-            db = DbSetores(engine)
-            if db.read(setor_atual):
+            db = DbSetores()
+            if db.coletar_um(setor_atual):
                 dropdown_menu_selecionar_setor.value = setor_atual
         except (VariavelConfigNaoEncontrada, ArquivoConfigNaoEncontrado):
             dropdown_menu_selecionar_setor.value = ""
@@ -893,11 +941,8 @@ def main(page: ft.Page):
         Gera lista contendo instancia de Text de cada setor
         Atribui lista ao coluna_de_locais.controls
         """
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_setores')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbSetores(engine)
-        lista_de_tuplas = [i for i in db.read()]
+        db = DbSetores()
+        lista_de_tuplas = db.coletar_varios()
         if lista_de_tuplas:
             temp_list = []
             for tupla in lista_de_tuplas:
@@ -913,11 +958,8 @@ def main(page: ft.Page):
         Atribui lista ao dropdown_menu_excluir.option
         """
         temp_list = []
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_setores')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbSetores(engine)
-        lista_de_tuplas = [i for i in db.read()]
+        db = DbSetores()
+        lista_de_tuplas = db.coletar_varios()
         if lista_de_tuplas:
             for tupla in lista_de_tuplas:
                 temp_list.append(ft.dropdown.Option(tupla[1]))
@@ -930,11 +972,8 @@ def main(page: ft.Page):
         Set o valor de imput_inserir_local para uma string vazia
         """
         if imput_inserir_local.value and imput_inserir_local.value != "":
-            js = JsonFile()
-            caminho_db = js.ler('caminho_db_setores')
-            engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-            db = DbSetores(engine)
-            db.create(imput_inserir_local.value)
+            db = DbSetores()
+            db.inserir(imput_inserir_local.value)
             imput_inserir_local.value = ""
             preenche_campo_setores()
             gerar_opcoes_dropdown_excluir()
@@ -949,11 +988,8 @@ def main(page: ft.Page):
         Seta o valor de imput_inserir_local para uma string vazia
         """
         if dropdown_menu_excluir.value and dropdown_menu_excluir.value != "":
-            js = JsonFile()
-            caminho_db = js.ler('caminho_db_setores')
-            engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-            db = DbSetores(engine)
-            db.delete(dropdown_menu_excluir.value)
+            db = DbSetores()
+            db.excluir(dropdown_menu_excluir.value)
             preenche_campo_setores()
             gerar_opcoes_dropdown_excluir()
             dropdown_menu_excluir.value = ""
@@ -972,14 +1008,11 @@ def main(page: ft.Page):
         try:
             jf = JsonFile()
             temp_dict1 = jf.ler("identificacao")
-            caminho_db = jf.ler('caminho_db_prontuarios')
-
-            engine = create_engine(f"sqlite:///{caminho_db}", future=True)
 
             index_cpf = text_cpf.value.index(' ')+1
             cpf = text_cpf.value[index_cpf:-1]
-            db = DbProntuarios(engine)
-            res = [i for i in db.read({'cpf': cpf})][0]
+            db = DbProntuarios()
+            res = db.coletar({'cpf': cpf})[0]
             receituario = res[-4]
             temp_dict1["receituario"] = receituario
 
@@ -1193,13 +1226,10 @@ def main(page: ft.Page):
         """
         page.on_keyboard_event = None
         page.bgcolor = None
-        prontuario = int(e.control.data)
+        prontuario = e.control.data
 
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_prontuarios')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbProntuarios(engine)
-        res = [i for i in db.read({"id": prontuario})][0]
+        db = DbProntuarios()
+        res = db.coletar({"id": prontuario})[0]
 
         limpar_tela()
 
@@ -1298,13 +1328,10 @@ def main(page: ft.Page):
             fim = e.control.title.value.index(",")
             prontuario = int(e.control.title.value[inicio:fim])
         except AttributeError:
-            prontuario = int(e.control.data)
+            prontuario = e.control.data
 
-        js = JsonFile()
-        caminho_db = js.ler('caminho_db_prontuarios')
-        engine = create_engine(f"sqlite:///{caminho_db}", future=True)
-        db = DbProntuarios(engine)
-        res = [i for i in db.read({"id": prontuario})][0]
+        db = DbProntuarios()
+        res = db.coletar({"id": prontuario})[0]
 
         limpar_tela()
 
@@ -1321,10 +1348,7 @@ def main(page: ft.Page):
         imput_receita.value = res[12]
 
         # habilita ou não o botão de gerar a receita
-        if (imput_receita.value == None
-        or imput_receita.value == ""
-        or imput_nome_atendente.value == None
-        or imput_nome_atendente.value == ""):
+        if imput_receita.value == None or imput_receita.value == "" or imput_nome_atendente.value == None or imput_nome_atendente.value == "":
             btn_gerar_receita.disabled = True
         else:
             btn_gerar_receita.disabled = False
@@ -1358,8 +1382,8 @@ def main(page: ft.Page):
         text_data_nascimento.value = f"Data de nascimento: {res[4]}"
         text_sexo.value = f'Sexo: {"Masculino" if res[5] == "M" else "Feminino"},'
         text_peso.value = f"Peso: {res[6]}Kg"
-        text_chegada.value = f"Chegada: {res[-2].strftime('%d/%m/%Y-%H:%M:%S')}"
-        text_ultimo_atendimento.value = f"Último atendimento: {res[-1].strftime('%d/%m/%Y-%H:%M:%S')}"
+        text_chegada.value = f"Chegada: {res[-2]}"
+        text_ultimo_atendimento.value = f"Último atendimento: {res[-1]}"
         text_contato.value = f"Contato: {res[3]}"
 
         coluna_esquerda = ft.Column(
@@ -1469,6 +1493,7 @@ def main(page: ft.Page):
         checkbox_verde.on_change = pesquisar_prontuario
         imput_cpf_pesquisa.on_change = cpf_pesquisa_on_change
         imput_cpf_pesquisa.on_blur = cpf_pesquisa_on_blur
+        switch_finalizados.value = False
         switch_finalizados.on_change = pesquisar_prontuario
 
         primeira_row = ft.Row(
@@ -1494,8 +1519,7 @@ def main(page: ft.Page):
                 [
                     ft.ElevatedButton(
                         "Limpar pesquisa",
-                        # on_click=mostrar_todos_os_prontuarios_nao_finalizado,
-                        on_click=zerar_consultas_e_pesquisar,
+                        on_click=mostrar_todos_os_prontuarios_nao_finalizado,
                     ),
                     ft.VerticalDivider(width=9),
                     ft.ElevatedButton("Pesquisar", on_click=pesquisar_prontuario),
@@ -1544,8 +1568,7 @@ def main(page: ft.Page):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
-        # mostrar_todos_os_prontuarios_nao_finalizado()
-        zerar_consultas_e_pesquisar()
+        mostrar_todos_os_prontuarios_nao_finalizado()
 
         page.add(coluna_principal)
 
@@ -1841,9 +1864,9 @@ def main(page: ft.Page):
         Se não:
             Chama a tela de selecionar/criar db
         """
-        caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
-        # caminho_executavel = Path(sys.executable).parent
-        # caminho_json = caminho_executavel / "config.json"
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
+        caminho_executavel = Path(sys.executable).parent
+        caminho_json = caminho_executavel / "config.json"
         if caminho_json.exists():
             with open(caminho_json) as f:
                 dicionario = json.load(f)
