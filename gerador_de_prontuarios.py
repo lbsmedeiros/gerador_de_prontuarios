@@ -1841,9 +1841,9 @@ def main(page: ft.Page):
         Se não:
             Chama a tela de selecionar/criar db
         """
-        caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
-        # caminho_executavel = Path(sys.executable).parent
-        # caminho_json = caminho_executavel / "config.json"
+        # caminho_json = Path(r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\src\config.json")
+        caminho_executavel = Path(sys.executable).parent
+        caminho_json = caminho_executavel / "config.json"
         if caminho_json.exists():
             with open(caminho_json) as f:
                 dicionario = json.load(f)

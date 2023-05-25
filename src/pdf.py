@@ -8,9 +8,9 @@ from reportlab.pdfgen import canvas
 
 
 class GerarPDF:
-    imagem = r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\bastao_de_asclepio.bmp"
-    # caminho_executavel = Path(sys.executable).parent
-    # imagem = str(caminho_executavel / "bastao_de_asclepio.bmp")
+    # imagem = r"C:\Users\lbsme\Documents\GitHub\prontuario_medico\bastao_de_asclepio.bmp"
+    caminho_executavel = Path(sys.executable).parent
+    imagem = str(caminho_executavel / "bastao_de_asclepio.bmp")
     altura_máxima_A4 = 842
     largura_máxima_A4 = 595
     altura_imagem = 278
